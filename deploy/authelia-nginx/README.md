@@ -60,6 +60,7 @@ sudo systemctl reload nginx
 
 - Open `https://auth.example.com` (Authelia login page).
 - Open `https://relay.example.com/admin` and complete login + TOTP.
+- `curl -I https://relay.example.com/admin` should return `302` when not authenticated.
 - Create relay token in admin page.
 
 ## Notes
