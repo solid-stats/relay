@@ -59,6 +59,69 @@ REPLAYS_RELAY_URL=https://relay.your-domain/relay
 REPLAYS_RELAY_TOKEN=<user-token>
 ```
 
-## Deployment with Authelia + Caddy
+## Deployment with Authelia + Existing Nginx
 
-See `deploy/authelia-caddy/README.md`.
+See `deploy/authelia-nginx/README.md`.
+
+## CD (GitHub Actions)
+
+Workflow: `.github/workflows/cd.yml`.
+
+Trigger:
+
+- `push` to `main` or `master`
+- `workflow_dispatch` (manual run)
+
+### GitHub Secrets
+
+Create repository secrets:
+
+- `CD_SSH_HOST` - server IP or host.
+- `CD_SSH_PORT` - SSH port (usually `22`).
+- `CD_SSH_USER` - deploy user on server.
+- `CD_SSH_PRIVATE_KEY` - private SSH key for this deploy user.
+- `CD_APP_DIR` - absolute path to project on server.
+
+Example for `CD_APP_DIR`:
+
+```text
+/home/deploy/sg_stats_relay
+```
+
+### One-time server setup
+
+```bash
+# 1) clone repo
+mkdir -p /home/deploy
+cd /home/deploy
+git clone git@github.com:<org>/<repo>.git sg_stats_relay
+cd sg_stats_relay
+
+# 2) prepare relay env
+cp .env.sample .env
+# fill .env manually
+
+# 3) prepare auth stack env
+cp deploy/authelia-nginx/.env.example deploy/authelia-nginx/.env
+# fill deploy/authelia-nginx/.env manually
+
+# 4) start relay and authelia
+npm ci
+pm2 startOrReload ecosystem.config.cjs --update-env
+pm2 save
+cd deploy/authelia-nginx && docker compose up -d
+```
+
+After that, each push to `main`/`master` runs remote script `deploy/remote-deploy.sh`:
+
+- fetch + checkout target branch
+- hard reset to `origin/<branch>`
+- `npm ci --omit=dev`
+- `pm2 startOrReload ecosystem.config.cjs --update-env`
+- `docker compose up -d --remove-orphans` in `deploy/authelia-nginx`
+
+### Notes
+
+- Keep production `.env` files only on server (never commit them).
+- Deploy user should have minimal rights: project directory, `pm2`, and `docker compose`.
+- If your default branch has another name, update `cd.yml` trigger.
