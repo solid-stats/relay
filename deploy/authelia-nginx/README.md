@@ -22,6 +22,9 @@ Fill `.env` and ensure:
 - `AUTH_PROXY_SHARED_SECRET` equals root `.env` value `TRUSTED_AUTH_SHARED_SECRET`.
 - `RELAY_DOMAIN`, `AUTH_DOMAIN`, `BASE_DOMAIN` are correct.
 
+`authelia/configuration.yml` uses template expressions (`{{ mustEnv ... }}`), enabled via
+`X_AUTHELIA_CONFIG_FILTERS=template` in `docker-compose.yml`.
+
 ## 3) Configure Authelia users
 
 Edit `authelia/users_database.yml` with your admin email and password hash.
@@ -42,7 +45,8 @@ docker compose up -d
 
 1. Copy `nginx/sg-stats-relay.conf.example` to `/etc/nginx/sites-available/sg-stats-relay.conf`.
 2. Replace domains, TLS certificate paths, and `X-Auth-Proxy-Secret` value.
-3. Enable site and reload Nginx.
+3. Keep upstream port in Nginx equal to `HOST_PORT_AUTHELIA` value from `.env`.
+4. Enable site and reload Nginx.
 
 Example:
 
@@ -62,4 +66,4 @@ sudo systemctl reload nginx
 
 - `/relay` stays public by path, but protected by relay bearer token.
 - `/admin*` is protected by Authelia and trusted header secret.
-- Authelia listens on `127.0.0.1:${AUTHELIA_PORT}` (default `2317`).
+- Authelia host listen address is `127.0.0.1:${HOST_PORT_AUTHELIA}` (default `2317`).
