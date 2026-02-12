@@ -173,7 +173,7 @@ const relayProxy = createProxyMiddleware({
 });
 
 app.get('/health', (_request, response) => {
-  response.json({ ok: true });
+  response.json({ ok: true, test_CD: true });
 });
 
 app.get(
