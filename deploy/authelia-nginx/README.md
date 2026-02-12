@@ -27,7 +27,15 @@ Fill `.env` and ensure:
 
 ## 3) Configure Authelia users
 
-Edit `authelia/users_database.yml` with your admin email and password hash.
+Create local users file from template:
+
+```bash
+cp authelia/users_database.example.yml authelia/users_database.yml
+```
+
+Then edit `authelia/users_database.yml` with your admin email and password hash.
+
+`authelia/users_database.yml` is gitignored and must be filled manually on each server.
 
 Generate password hash:
 
