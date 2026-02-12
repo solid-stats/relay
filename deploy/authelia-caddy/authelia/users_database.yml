@@ -1,0 +1,9 @@
+users:
+  relay_admin:
+    displayname: "Relay Admin"
+    # Generate hash with:
+    # docker run --rm authelia/authelia:4.39 authelia crypto hash generate argon2 --password 'StrongPassword123!'
+    password: '$argon2id$v=19$m=65536,t=3,p=4$replace$replace'
+    email: admin1@example.com
+    groups:
+      - admins

@@ -1,0 +1,32 @@
+services:
+  caddy:
+    image: caddy:2.9
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - authelia
+
+  authelia:
+    image: authelia/authelia:4.39
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./authelia/configuration.yml:/config/configuration.yml:ro
+      - ./authelia/users_database.yml:/config/users_database.yml:ro
+      - authelia_data:/config/data
+
+volumes:
+  caddy_data:
+  caddy_config:
+  authelia_data:

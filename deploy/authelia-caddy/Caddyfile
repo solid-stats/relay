@@ -1,0 +1,26 @@
+{
+  email {$ACME_EMAIL}
+}
+
+{$AUTH_DOMAIN} {
+  reverse_proxy authelia:9091
+}
+
+{$RELAY_DOMAIN} {
+  @admin path /admin*
+
+  handle @admin {
+    forward_auth authelia:9091 {
+      uri /api/authz/forward-auth
+      copy_headers Remote-User Remote-Email
+    }
+
+    reverse_proxy host.docker.internal:8787 {
+      header_up X-Auth-Proxy-Secret {$AUTH_PROXY_SHARED_SECRET}
+    }
+  }
+
+  handle {
+    reverse_proxy host.docker.internal:8787
+  }
+}
