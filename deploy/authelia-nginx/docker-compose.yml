@@ -5,7 +5,7 @@ services:
     env_file:
       - .env
     ports:
-      - "127.0.0.1:${AUTHELIA_PORT:-9091}:9091"
+      - "127.0.0.1:${AUTHELIA_PORT:-2317}:2317"
     volumes:
       - ./authelia/configuration.yml:/config/configuration.yml:ro
       - ./authelia/users_database.yml:/config/users_database.yml:ro

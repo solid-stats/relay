@@ -62,4 +62,4 @@ sudo systemctl reload nginx
 
 - `/relay` stays public by path, but protected by relay bearer token.
 - `/admin*` is protected by Authelia and trusted header secret.
-- Authelia listens on `127.0.0.1:${AUTHELIA_PORT}` (default `9091`).
+- Authelia listens on `127.0.0.1:${AUTHELIA_PORT}` (default `2317`).

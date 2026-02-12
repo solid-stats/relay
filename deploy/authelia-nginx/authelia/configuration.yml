@@ -3,7 +3,7 @@ theme: auto
 default_2fa_method: totp
 
 server:
-  address: tcp://0.0.0.0:9091
+  address: tcp://0.0.0.0:2317
 
 log:
   level: info
