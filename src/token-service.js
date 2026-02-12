@@ -1,9 +1,14 @@
+import { createHash } from 'node:crypto';
+
 import { SignJWT, jwtVerify } from 'jose';
 
 import { config } from './config.js';
 
 const relayTokenScope = 'sg-stats-relay';
 const tokenSecret = new TextEncoder().encode(config.RELAY_TOKEN_SECRET);
+
+export const getRelayTokenFingerprint = (relayToken) =>
+  createHash('sha256').update(relayToken).digest('hex').slice(0, 16);
 
 export const issueRelayToken = async ({ username, expiresInDays }) =>
   new SignJWT({

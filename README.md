@@ -9,6 +9,7 @@ Relay service for `sg.zone` with per-user tokens and admin panel protected by Au
 - Token creation from any device via `/admin` page.
 - Admin access protected by Authelia 2FA.
 - Relay endpoint is fixed to `sg.zone` only.
+- Audit logs for token issuance and relay requests.
 - Ready for `pm2` (`ecosystem.config.cjs` included).
 
 ## Quick start
@@ -49,8 +50,19 @@ pm2 status
 
 - `GET /health` - health check.
 - `GET /admin` - admin page (Authelia + trusted proxy headers required).
-- `POST /admin/tokens` - issue personal token (Authelia + trusted proxy headers required).
+- `POST /admin/tokens` - issue personal token (Authelia + trusted proxy headers required). Response includes `tokenFingerprint`.
 - `GET /relay?path=/replays?p=1` - relay request (Bearer token required).
+
+## Logs
+
+By default logs are written to `./logs/<YYYY-MM-DD>/`:
+
+- `info.log` - token issuance + all `/relay` requests.
+- `error.log` - unhandled errors/exceptions.
+
+If needed, override directory with `RELAY_LOGS_DIR`.
+
+To map token to user, use `tokenFingerprint` from `/admin/tokens` response and find the same fingerprint in relay request logs.
 
 ## Parser env example
 

@@ -1,5 +1,6 @@
 node_modules
 .env
 npm-debug.log*
+logs/
 
 deploy/authelia-nginx/authelia/users_database.yml

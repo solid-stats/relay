@@ -8,7 +8,12 @@ import { z } from 'zod';
 
 import { getAdminPageHtml } from './admin-ui.js';
 import { config } from './config.js';
-import { issueRelayToken, verifyRelayToken } from './token-service.js';
+import logger from './logger.js';
+import {
+  getRelayTokenFingerprint,
+  issueRelayToken,
+  verifyRelayToken,
+} from './token-service.js';
 
 const relayPathSchema = z
   .string()
@@ -86,10 +91,38 @@ const getRelayTokenFromRequest = (request) => {
   return null;
 };
 
+const getDurationMilliseconds = (startedAtNanoseconds) =>
+  Number(((process.hrtime.bigint() - startedAtNanoseconds) / 1000000n).toString());
+
+const logRelayRequest = (request, response, next) => {
+  const startedAtNanoseconds = process.hrtime.bigint();
+
+  response.on('finish', () => {
+    logger.info('Relay request completed.', {
+      statusCode: response.statusCode,
+      method: request.method,
+      url: request.originalUrl,
+      relayPath: request.relayPath || request.query.path || null,
+      relayUser: request.relayUser || null,
+      tokenFingerprint: request.relayTokenFingerprint || null,
+      ip: request.ip,
+      userAgent: getHeaderValue(request, 'user-agent') || null,
+      durationMs: getDurationMilliseconds(startedAtNanoseconds),
+    });
+  });
+
+  next();
+};
+
 const requireRelayToken = async (request, response, next) => {
   const relayToken = getRelayTokenFromRequest(request);
 
   if (!relayToken) {
+    logger.warn('Relay request rejected: token is missing.', {
+      method: request.method,
+      url: request.originalUrl,
+      ip: request.ip,
+    });
     response.status(401).json({ error: 'Relay token is required.' });
 
     return;
@@ -99,8 +132,16 @@ const requireRelayToken = async (request, response, next) => {
     const relayPayload = await verifyRelayToken(relayToken);
 
     request.relayUser = relayPayload.sub;
+    request.relayTokenFingerprint = getRelayTokenFingerprint(relayToken);
     next();
   } catch (error) {
+    logger.warn('Relay request rejected: token is invalid.', {
+      method: request.method,
+      url: request.originalUrl,
+      ip: request.ip,
+      tokenFingerprint: getRelayTokenFingerprint(relayToken),
+      error,
+    });
     response.status(401).json({ error: 'Invalid relay token.' });
   }
 };
@@ -152,6 +193,14 @@ const attachRelayPath = (request, response, next) => {
   const parsedRelayPath = relayPathSchema.safeParse(request.query.path);
 
   if (!parsedRelayPath.success) {
+    logger.warn('Relay request rejected: invalid target path.', {
+      method: request.method,
+      url: request.originalUrl,
+      tokenFingerprint: request.relayTokenFingerprint || null,
+      relayUser: request.relayUser || null,
+      path: request.query.path,
+      reason: parsedRelayPath.error.issues[0].message,
+    });
     response
       .status(400)
       .json({ error: parsedRelayPath.error.issues[0].message });
@@ -204,30 +253,47 @@ app.post(
       username: parsedBody.data.username,
       expiresInDays,
     });
+    const tokenFingerprint = getRelayTokenFingerprint(token);
+
+    logger.info('Relay token issued.', {
+      username: parsedBody.data.username,
+      issuedBy: request.accessEmail,
+      expiresInDays,
+      tokenFingerprint,
+    });
 
     response.json({
       username: parsedBody.data.username,
       issuedBy: request.accessEmail,
       expiresInDays,
       token,
+      tokenFingerprint,
     });
   },
 );
 
 app.get(
   '/relay',
+  logRelayRequest,
   relayRateLimiter,
   requireRelayToken,
   attachRelayPath,
   relayProxy,
 );
 
-app.use((error, _request, response, _next) => {
-  console.error(error);
+app.use((error, request, response, _next) => {
+  logger.error('Unhandled request error.', {
+    method: request.method,
+    url: request.originalUrl,
+    error,
+  });
   response.status(500).json({ error: 'Internal Server Error' });
 });
 
 app.listen(config.PORT, config.HOST, () => {
-  console.log(`sg-stats-relay started on ${config.HOST}:${config.PORT}`);
-  console.log(`relay target: ${relayTargetUrl.origin}`);
+  logger.info('sg-stats-relay started.', {
+    host: config.HOST,
+    port: config.PORT,
+    relayTarget: relayTargetUrl.origin,
+  });
 });
