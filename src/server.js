@@ -19,7 +19,7 @@ const relayPathSchema = z
 
 const issueTokenRequestSchema = z.object({
   username: z.string().trim().min(2).max(64),
-  expiresInDays: z.coerce.number().int().min(1).max(3650).optional()
+  expiresInDays: z.coerce.number().int().min(1).max(3650).optional(),
 });
 
 const app = express();
@@ -30,8 +30,8 @@ app.set('trust proxy', config.TRUST_PROXY);
 
 app.use(
   helmet({
-    contentSecurityPolicy: false
-  })
+    contentSecurityPolicy: false,
+  }),
 );
 app.use(express.json({ limit: '64kb' }));
 
@@ -39,14 +39,14 @@ const relayRateLimiter = rateLimit({
   windowMs: 60 * 1000,
   limit: config.RELAY_RATE_LIMIT_PER_MINUTE,
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
 });
 
 const adminRateLimiter = rateLimit({
   windowMs: 60 * 1000,
   limit: config.RELAY_ADMIN_RATE_LIMIT_PER_MINUTE,
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
 });
 
 const getHeaderValue = (request, headerName) => {
@@ -106,10 +106,18 @@ const requireRelayToken = async (request, response, next) => {
 };
 
 const requireTrustedAuthProxy = (request, response, next) => {
-  const proxySecret = getHeaderValue(request, config.TRUSTED_AUTH_SECRET_HEADER);
+  const proxySecret = getHeaderValue(
+    request,
+    config.TRUSTED_AUTH_SECRET_HEADER,
+  );
 
-  if (!proxySecret || !areValuesEqual(proxySecret, config.TRUSTED_AUTH_SHARED_SECRET)) {
-    response.status(401).json({ error: 'Request is not trusted auth-proxy traffic.' });
+  if (
+    !proxySecret ||
+    !areValuesEqual(proxySecret, config.TRUSTED_AUTH_SHARED_SECRET)
+  ) {
+    response
+      .status(401)
+      .json({ error: 'Request is not trusted auth-proxy traffic.' });
 
     return;
   }
@@ -117,7 +125,9 @@ const requireTrustedAuthProxy = (request, response, next) => {
   const adminEmail = getHeaderValue(request, config.TRUSTED_AUTH_EMAIL_HEADER);
 
   if (!adminEmail) {
-    response.status(401).json({ error: 'Authenticated email header is missing.' });
+    response
+      .status(401)
+      .json({ error: 'Authenticated email header is missing.' });
 
     return;
   }
@@ -142,7 +152,9 @@ const attachRelayPath = (request, response, next) => {
   const parsedRelayPath = relayPathSchema.safeParse(request.query.path);
 
   if (!parsedRelayPath.success) {
-    response.status(400).json({ error: parsedRelayPath.error.issues[0].message });
+    response
+      .status(400)
+      .json({ error: parsedRelayPath.error.issues[0].message });
 
     return;
   }
@@ -157,41 +169,58 @@ const relayProxy = createProxyMiddleware({
   secure: true,
   xfwd: true,
   pathRewrite: (_path, request) => request.relayPath,
-  logLevel: config.NODE_ENV === 'development' ? 'debug' : 'warn'
+  logLevel: config.NODE_ENV === 'development' ? 'debug' : 'warn',
 });
 
 app.get('/health', (_request, response) => {
   response.json({ ok: true });
 });
 
-app.get('/admin', adminRateLimiter, requireTrustedAuthProxy, (_request, response) => {
-  response.type('html').send(getAdminPageHtml());
-});
+app.get(
+  '/admin',
+  adminRateLimiter,
+  requireTrustedAuthProxy,
+  (_request, response) => {
+    response.type('html').send(getAdminPageHtml());
+  },
+);
 
-app.post('/admin/tokens', adminRateLimiter, requireTrustedAuthProxy, async (request, response) => {
-  const parsedBody = issueTokenRequestSchema.safeParse(request.body);
+app.post(
+  '/admin/tokens',
+  adminRateLimiter,
+  requireTrustedAuthProxy,
+  async (request, response) => {
+    const parsedBody = issueTokenRequestSchema.safeParse(request.body);
 
-  if (!parsedBody.success) {
-    response.status(400).json({ error: parsedBody.error.issues[0].message });
+    if (!parsedBody.success) {
+      response.status(400).json({ error: parsedBody.error.issues[0].message });
 
-    return;
-  }
+      return;
+    }
 
-  const expiresInDays = parsedBody.data.expiresInDays ?? config.RELAY_TOKEN_TTL_DAYS;
-  const token = await issueRelayToken({
-    username: parsedBody.data.username,
-    expiresInDays
-  });
+    const expiresInDays =
+      parsedBody.data.expiresInDays ?? config.RELAY_TOKEN_TTL_DAYS;
+    const token = await issueRelayToken({
+      username: parsedBody.data.username,
+      expiresInDays,
+    });
 
-  response.json({
-    username: parsedBody.data.username,
-    issuedBy: request.accessEmail,
-    expiresInDays,
-    token
-  });
-});
+    response.json({
+      username: parsedBody.data.username,
+      issuedBy: request.accessEmail,
+      expiresInDays,
+      token,
+    });
+  },
+);
 
-app.get('/relay', relayRateLimiter, requireRelayToken, attachRelayPath, relayProxy);
+app.get(
+  '/relay',
+  relayRateLimiter,
+  requireRelayToken,
+  attachRelayPath,
+  relayProxy,
+);
 
 app.use((error, _request, response, _next) => {
   console.error(error);
