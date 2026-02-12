@@ -4,15 +4,34 @@ import path from 'node:path';
 const isTestEnvironment = process.env.NODE_ENV === 'test';
 const logsRootPath = process.env.RELAY_LOGS_DIR || path.join(process.cwd(), 'logs');
 
-const currentDateFolder = () => new Date().toISOString().slice(0, 10);
+const pad = (value) => String(value).padStart(2, '0');
 
-const resolveLogFilePath = (level) => {
-  const logsFolderPath = path.join(logsRootPath, currentDateFolder());
+const formatSessionFolderName = (date) => {
+  const year = date.getFullYear();
+  const month = pad(date.getMonth() + 1);
+  const day = pad(date.getDate());
+  const hours = pad(date.getHours());
+  const minutes = pad(date.getMinutes());
+  const seconds = pad(date.getSeconds());
+
+  return `${year}-${month}-${day}_${hours}-${minutes}-${seconds}`;
+};
+
+const logSessionFolderName = formatSessionFolderName(new Date());
+
+const resolveSessionLogFilePath = (level) => {
+  const logsFolderPath = path.join(logsRootPath, logSessionFolderName);
   const fileName = level === 'error' || level === 'fatal' ? 'error.log' : 'info.log';
 
   fs.mkdirSync(logsFolderPath, { recursive: true });
 
   return path.join(logsFolderPath, fileName);
+};
+
+const resolveIssuedTokensLogPath = () => {
+  fs.mkdirSync(logsRootPath, { recursive: true });
+
+  return path.join(logsRootPath, 'issued-tokens.log');
 };
 
 const normalizeError = (error) => {
@@ -40,6 +59,16 @@ const normalizeMeta = (meta) => {
   );
 };
 
+const writeOutput = (level, output) => {
+  if (level === 'error' || level === 'fatal') {
+    console.error(output);
+
+    return;
+  }
+
+  console.log(output);
+};
+
 const writeEntry = (level, message, meta = {}) => {
   const entry = {
     timestamp: new Date().toISOString(),
@@ -51,15 +80,27 @@ const writeEntry = (level, message, meta = {}) => {
   const output = JSON.stringify(entry);
 
   if (!isTestEnvironment) {
-    const destinationPath = resolveLogFilePath(level);
+    const destinationPath = resolveSessionLogFilePath(level);
 
     fs.appendFileSync(destinationPath, `${output}\n`);
   }
 
-  if (level === 'error' || level === 'fatal') {
-    console.error(output);
+  writeOutput(level, output);
+};
 
-    return;
+const writeIssuedTokenEntry = (meta = {}) => {
+  const entry = {
+    timestamp: new Date().toISOString(),
+    event: 'issued-token',
+    ...normalizeMeta(meta),
+  };
+
+  const output = JSON.stringify(entry);
+
+  if (!isTestEnvironment) {
+    const destinationPath = resolveIssuedTokensLogPath();
+
+    fs.appendFileSync(destinationPath, `${output}\n`);
   }
 
   console.log(output);
@@ -70,6 +111,7 @@ const logger = {
   warn: (message, meta) => writeEntry('warn', message, meta),
   error: (message, meta) => writeEntry('error', message, meta),
   fatal: (message, meta) => writeEntry('fatal', message, meta),
+  issuedToken: (meta) => writeIssuedTokenEntry(meta),
 };
 
 process.on('uncaughtException', (error) => {

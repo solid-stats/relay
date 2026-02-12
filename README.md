@@ -55,14 +55,15 @@ pm2 status
 
 ## Logs
 
-By default logs are written to `./logs/<YYYY-MM-DD>/`:
+By default logs are written to `./logs/` with two targets:
 
-- `info.log` - token issuance + all `/relay` requests.
-- `error.log` - unhandled errors/exceptions.
+- `./logs/<YYYY-MM-DD_HH-mm-ss>/info.log` - runtime relay logs.
+- `./logs/<YYYY-MM-DD_HH-mm-ss>/error.log` - unhandled errors/exceptions.
+- `./logs/issued-tokens.log` - unified registry of all issued tokens (`username`, `issuedBy`, `tokenFingerprint`, `expiresInDays`).
 
 If needed, override directory with `RELAY_LOGS_DIR`.
 
-To map token to user, use `tokenFingerprint` from `/admin/tokens` response and find the same fingerprint in relay request logs.
+To map token to user, use `tokenFingerprint` from `/admin/tokens` response and match it in `issued-tokens.log` and relay request logs.
 
 ## Parser env example
 

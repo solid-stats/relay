@@ -255,7 +255,7 @@ app.post(
     });
     const tokenFingerprint = getRelayTokenFingerprint(token);
 
-    logger.info('Relay token issued.', {
+    logger.issuedToken({
       username: parsedBody.data.username,
       issuedBy: request.accessEmail,
       expiresInDays,
