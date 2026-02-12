@@ -32,4 +32,9 @@ jobs:
           command_timeout: 30m
           envs: APP_DIR,BRANCH
           script: |
+            echo "USER=$(whoami)"
+            echo "PATH=$PATH"
+            command -v node || true
+            command -v npm || true
+            command -v pm2 || true
             bash "$APP_DIR/deploy/remote-deploy.sh" "$APP_DIR" "$BRANCH"

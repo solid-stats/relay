@@ -30,17 +30,6 @@ if ! docker compose version >/dev/null 2>&1; then
 fi
 
 AUTH_STACK_DIR="$APP_DIR/deploy/authelia-nginx"
-LEGACY_AUTH_STACK_DIR="$APP_DIR/deploy/authelia-caddy"
-
-if [[ ! -d "$AUTH_STACK_DIR" ]]; then
-  if [[ -d "$LEGACY_AUTH_STACK_DIR" ]]; then
-    printf 'WARN: %s not found, using legacy path %s\n' "$AUTH_STACK_DIR" "$LEGACY_AUTH_STACK_DIR" >&2
-    AUTH_STACK_DIR="$LEGACY_AUTH_STACK_DIR"
-  else
-    printf 'ERROR: auth stack dir was not found (expected %s)\n' "$AUTH_STACK_DIR" >&2
-    exit 66
-  fi
-fi
 
 cd "$APP_DIR"
 
